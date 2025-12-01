@@ -10,8 +10,6 @@ const PORT = process.env.PORT || 3001;
 
 app.use(express.json());
 
-// Dummy users list
-
 app.post("/signup", async (req, res) => {
   try {
     const parseResult = CreateUserSchema.safeParse(req.body);
