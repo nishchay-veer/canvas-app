@@ -1,7 +1,6 @@
 import jwt from "jsonwebtoken";
 import { Request, Response, NextFunction } from "express";
-// Auth middleware
-import { JWT_SECRET } from "./index.js";
+import { JWT_SECRET } from "@repo/backend-common/config";
 export interface AuthRequest extends Request {
   user?: {
     id: string;

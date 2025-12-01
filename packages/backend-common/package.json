@@ -1,0 +1,23 @@
+{
+  "name": "@repo/backend-common",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "build": "tsc -b",
+    "dev": "pnpm run build && pnpm run start",
+    "start": "node ./dist/index.js"
+  },
+  "exports": {
+    "./config": "./src/index.ts"
+  },
+  "keywords": [],
+  "dependencies": {
+    "@repo/typescript-config": "workspace:*"
+  },
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "devDependencies": {
+    "@types/node": "^22.15.3"
+  }
+}

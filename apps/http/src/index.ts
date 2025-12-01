@@ -1,10 +1,11 @@
-import express, { Request, Response, NextFunction } from "express";
+import express, { Response } from "express";
+import { JWT_SECRET } from "@repo/backend-common/config";
+import { CreateUserSchema } from "@repo/common/types";
 import jwt from "jsonwebtoken";
 import bcrypt from "bcryptjs";
 import { authMiddleware, AuthRequest } from "./middleware";
 const app = express();
 const PORT = process.env.PORT || 3001;
-export const JWT_SECRET = process.env.JWT_SECRET || "your-secret-key";
 
 app.use(express.json());
 
@@ -29,13 +30,15 @@ const rooms: Room[] = [];
 
 app.post("/signup", async (req, res) => {
   try {
-    const { username, password } = req.body;
+    const parseResult = CreateUserSchema.safeParse(req.body);
 
-    if (!username || !password) {
+    if (!parseResult.success) {
       return res
         .status(400)
         .json({ error: "Username and password are required" });
     }
+
+    const { username, password } = parseResult.data;
 
     // Check if user already exists
     const existingUser = users.find((u) => u.username === username);
