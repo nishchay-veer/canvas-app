@@ -139,14 +139,17 @@ importers:
   packages/db:
     dependencies:
       '@prisma/client':
-        specifier: ^6.19.0
+        specifier: 6.19.0
         version: 6.19.0(prisma@6.19.0(typescript@5.9.2))(typescript@5.9.2)
     devDependencies:
       '@repo/typescript-config':
         specifier: workspace:*
         version: link:../typescript-config
+      '@types/node':
+        specifier: ^22.15.3
+        version: 22.15.3
       prisma:
-        specifier: ^6.19.0
+        specifier: ^6.2.1
         version: 6.19.0(typescript@5.9.2)
 
   packages/eslint-config:

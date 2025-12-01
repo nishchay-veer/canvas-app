@@ -1,7 +1,7 @@
 import express, { Response } from "express";
 import { JWT_SECRET } from "@repo/backend-common/config";
 import { CreateUserSchema, CreateRoomSchema } from "@repo/common/types";
-import { prisma } from "@repo/db/client";
+import { prismaClient } from "@repo/db/client";
 import jwt from "jsonwebtoken";
 import bcrypt from "bcryptjs";
 import { authMiddleware, AuthRequest } from "./middleware";
@@ -23,7 +23,9 @@ app.post("/signup", async (req, res) => {
     const { username, password } = parseResult.data;
 
     // Check if user already exists
-    const existingUser = await prisma.user.findFirst({ where: { username } });
+    const existingUser = await prismaClient.user.findFirst({
+      where: { username },
+    });
     if (existingUser) {
       return res.status(400).json({ error: "User already exists" });
     }
@@ -32,7 +34,7 @@ app.post("/signup", async (req, res) => {
     const hashedPassword = await bcrypt.hash(password, 10);
 
     // Create new user
-    const newUser = await prisma.user.create({
+    const newUser = await prismaClient.user.create({
       data: {
         name: "dummy",
         username,
@@ -70,7 +72,7 @@ app.post("/signin", async (req, res) => {
     }
 
     // Find user
-    const user = await prisma.user.findFirst({ where: { username } });
+    const user = await prismaClient.user.findFirst({ where: { username } });
     if (!user) {
       return res.status(401).json({ error: "Invalid credentials" });
     }
@@ -114,7 +116,7 @@ app.post(
       const { name } = parseResult.data;
 
       // Create new room
-      const newRoom = await prisma.room.create({
+      const newRoom = await prismaClient.room.create({
         data: {
           name,
         },
