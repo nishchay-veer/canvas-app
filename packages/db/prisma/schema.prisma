@@ -11,11 +11,26 @@ model User {
   id       String  @id @default(uuid())
   username String  @unique
   password String
-  name     String?
+  name     String
+  photo    String?
+  rooms    Room[]
+  chats    Chat[]
 }
 
 model Room {
-  id        Int      @id @default(autoincrement())
-  name      String   @unique
-  createdAt DateTime @default(now())
+  id         Int      @id @default(autoincrement())
+  slug       String   @unique
+  created_at DateTime @default(now())
+  admin      User     @relation(fields: [admin_id], references: [id])
+  admin_id   String
+  chats      Chat[]
+}
+
+model Chat {
+  id      Int    @id @default(autoincrement())
+  message String
+  user_id String
+  room_id Int
+  user    User   @relation(fields: [user_id], references: [id])
+  room    Room   @relation(fields: [room_id], references: [id])
 }
