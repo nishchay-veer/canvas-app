@@ -94,6 +94,9 @@ importers:
       '@repo/backend-common':
         specifier: workspace:*
         version: link:../../packages/backend-common
+      '@repo/db':
+        specifier: workspace:*
+        version: link:../../packages/db
       bufferutil:
         specifier: ^4.0.1
         version: 4.0.9

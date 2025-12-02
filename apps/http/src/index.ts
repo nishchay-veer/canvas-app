@@ -1,6 +1,10 @@
 import express, { Response } from "express";
 import { JWT_SECRET } from "@repo/backend-common/config";
-import { CreateUserSchema, CreateRoomSchema } from "@repo/common/types";
+import {
+  CreateUserSchema,
+  CreateRoomSchema,
+  LoginUserSchema,
+} from "@repo/common/types";
 import { prismaClient } from "@repo/db/client";
 import jwt from "jsonwebtoken";
 import bcrypt from "bcryptjs";
@@ -17,10 +21,10 @@ app.post("/signup", async (req, res) => {
     if (!parseResult.success) {
       return res
         .status(400)
-        .json({ error: "Username and password are required" });
+        .json({ error: "Username, password and name are required" });
     }
 
-    const { username, password } = parseResult.data;
+    const { username, password, name, photo } = parseResult.data;
 
     // Check if user already exists
     const existingUser = await prismaClient.user.findFirst({
@@ -36,15 +40,16 @@ app.post("/signup", async (req, res) => {
     // Create new user
     const newUser = await prismaClient.user.create({
       data: {
-        name: "dummy",
-        username,
+        name,
+        email: username,
         password: hashedPassword,
+        photo,
       },
     });
 
     // Generate JWT token
     const token = jwt.sign(
-      { id: newUser.id, username: newUser.username },
+      { id: newUser.id, username: newUser.email },
       JWT_SECRET,
       {
         expiresIn: "24h",
@@ -63,13 +68,15 @@ app.post("/signup", async (req, res) => {
 
 app.post("/signin", async (req, res) => {
   try {
-    const { username, password } = req.body;
+    const parseResult = LoginUserSchema.safeParse(req.body);
 
-    if (!username || !password) {
+    if (!parseResult.success) {
       return res
         .status(400)
         .json({ error: "Username and password are required" });
     }
+
+    const { username, password } = parseResult.data;
 
     // Find user
     const user = await prismaClient.user.findFirst({ where: { username } });
@@ -113,12 +120,13 @@ app.post(
         return res.status(400).json({ error: "Invalid room data" });
       }
 
-      const { name } = parseResult.data;
+      const { slug } = parseResult.data;
 
       // Create new room
       const newRoom = await prismaClient.room.create({
         data: {
-          name,
+          slug,
+          admin_id: req.user!.id,
         },
       });
 

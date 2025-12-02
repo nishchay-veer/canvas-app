@@ -1,50 +1,104 @@
-import WebSocket, { WebSocketServer } from "ws";
-import jwt from "jsonwebtoken";
+import { WebSocket, WebSocketServer } from "ws";
+import jwt, { JwtPayload } from "jsonwebtoken";
 import { JWT_SECRET } from "@repo/backend-common/config";
+import { prismaClient } from "@repo/db/client";
 
 const wss = new WebSocketServer({ port: 8080 });
 
-interface AuthenticatedWebSocket extends WebSocket {
-  userId?: string;
-  username?: string;
+interface User {
+  ws: WebSocket;
+  rooms: string[];
+  userId: string;
 }
 
-wss.on("connection", (ws: AuthenticatedWebSocket, req) => {
-  try {
-    // Extract token from query parameter
-    const url = req.url;
-    const params = new URLSearchParams(url ? url.split("?")[1] : "");
-    const token = params.get("token");
+const users: User[] = [];
 
-    if (!token) {
-      ws.send(JSON.stringify({ error: "No token provided" }));
-      ws.close(1008, "No token provided");
-      return;
+function checkUser(token: string): string | null {
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET);
+
+    if (typeof decoded == "string") {
+      return null;
     }
 
-    // Verify token
-    const decoded = jwt.verify(token, JWT_SECRET) as {
-      id: string;
-      username: string;
-    };
+    if (!decoded || !decoded.id) {
+      return null;
+    }
 
-    // Attach user info to WebSocket
-    ws.userId = decoded.id;
-    ws.username = decoded.username;
-
-    console.log(`User ${decoded.username} connected`);
-
-    ws.on("message", (message: string) => {
-      ws.send("pong");
-    });
-
-    ws.on("close", () => {
-      console.log(`User ${ws.username} disconnected`);
-    });
-  } catch (error) {
-    ws.send(JSON.stringify({ error: "Invalid or expired token" }));
-    ws.close(1008, "Invalid token");
+    return decoded.id;
+  } catch (e) {
+    return null;
   }
-});
+  return null;
+}
 
-console.log("WebSocket server is running on ws://localhost:8080");
+wss.on("connection", function connection(ws, request) {
+  const url = request.url;
+  if (!url) {
+    return;
+  }
+  const queryParams = new URLSearchParams(url.split("?")[1]);
+  const token = queryParams.get("token") || "";
+  const userId = checkUser(token);
+
+  if (userId == null) {
+    ws.close();
+    return null;
+  }
+
+  users.push({
+    userId,
+    rooms: [],
+    ws,
+  });
+
+  ws.on("message", async function message(data) {
+    let parsedData;
+    if (typeof data !== "string") {
+      parsedData = JSON.parse(data.toString());
+    } else {
+      parsedData = JSON.parse(data); // {type: "join-room", roomId: 1}
+    }
+
+    if (parsedData.type === "join_room") {
+      const user = users.find((x) => x.ws === ws);
+      user?.rooms.push(parsedData.roomId);
+    }
+
+    if (parsedData.type === "leave_room") {
+      const user = users.find((x) => x.ws === ws);
+      if (!user) {
+        return;
+      }
+      user.rooms = user?.rooms.filter((x) => x === parsedData.room);
+    }
+
+    console.log("message received");
+    console.log(parsedData);
+
+    if (parsedData.type === "chat") {
+      const roomId = parsedData.roomId;
+      const message = parsedData.message;
+
+      await prismaClient.chat.
+        data: {
+          roomId: Number(roomId),
+          message,
+          userId,
+        },
+      });
+
+      users.forEach((user) => {
+        if (user.rooms.includes(roomId)) {
+          user.ws.send(
+            JSON.stringify({
+              type: "chat",
+              message: message,
+              roomId,
+            })
+          );
+        }
+      });
+    }
+  });
+});
