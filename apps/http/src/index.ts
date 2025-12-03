@@ -1,4 +1,4 @@
-import express, { Response } from "express";
+import express, { Request, Response } from "express";
 import { JWT_SECRET } from "@repo/backend-common/config";
 import {
   CreateUserSchema,
@@ -41,7 +41,7 @@ app.post("/signup", async (req, res) => {
     const newUser = await prismaClient.user.create({
       data: {
         name,
-        email: username,
+        username,
         password: hashedPassword,
         photo,
       },
@@ -49,7 +49,7 @@ app.post("/signup", async (req, res) => {
 
     // Generate JWT token
     const token = jwt.sign(
-      { id: newUser.id, username: newUser.email },
+      { id: newUser.id, username: newUser.username },
       JWT_SECRET,
       {
         expiresIn: "24h",
@@ -134,6 +134,48 @@ app.post(
         message: "Room created successfully",
         room: newRoom,
       });
+    } catch (error) {
+      res.status(500).json({ error: "Internal server error" });
+    }
+  }
+);
+
+//get chats of a room
+app.get(
+  "/rooms/:roomId/chats",
+  authMiddleware,
+  async (req: AuthRequest, res: Response) => {
+    try {
+      const { roomId } = req.params;
+
+      if (!roomId) {
+        res.status(400).json({ error: "Room ID is required" });
+        return;
+      }
+
+      const parsedRoomId = parseInt(roomId);
+
+      if (isNaN(parsedRoomId)) {
+        return res.status(400).json({ error: "Invalid room ID" });
+      }
+      const chats = await prismaClient.room
+        .findUnique({
+          where: { id: parsedRoomId },
+        })
+        .chats({
+          include: {
+            user: {
+              select: {
+                id: true,
+                username: true,
+                name: true,
+                photo: true,
+              },
+            },
+          },
+        });
+
+      res.json({ chats });
     } catch (error) {
       res.status(500).json({ error: "Internal server error" });
     }
