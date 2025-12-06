@@ -142,27 +142,22 @@ app.post(
 
 //get chats of a room
 app.get(
-  "/rooms/:roomId/chats",
+  "/rooms/:slug/chats",
   authMiddleware,
   async (req: AuthRequest, res: Response) => {
     try {
-      const { roomId } = req.params;
+      const { slug } = req.params;
 
-      if (!roomId) {
-        res.status(400).json({ error: "Room ID is required" });
+      if (!slug) {
+        res.status(400).json({ error: "Room slug is required" });
         return;
-      }
-
-      const parsedRoomId = parseInt(roomId);
-
-      if (isNaN(parsedRoomId)) {
-        return res.status(400).json({ error: "Invalid room ID" });
       }
       const chats = await prismaClient.room
         .findUnique({
-          where: { id: parsedRoomId },
+          where: { slug },
         })
         .chats({
+          orderBy: { created_at: "asc" },
           include: {
             user: {
               select: {
@@ -176,6 +171,35 @@ app.get(
         });
 
       res.json({ chats });
+    } catch (error) {
+      res.status(500).json({ error: "Internal server error" });
+    }
+  }
+);
+
+//get room id by slug
+app.get(
+  "/rooms/:slug",
+  authMiddleware,
+  async (req: AuthRequest, res: Response) => {
+    try {
+      const { slug } = req.params;
+
+      if (!slug) {
+        res.status(400).json({ error: "Room slug is required" });
+        return;
+      }
+
+      const room = await prismaClient.room.findUnique({
+        where: { slug },
+      });
+
+      if (!room) {
+        res.status(404).json({ error: "Room not found" });
+        return;
+      }
+
+      res.json({ room });
     } catch (error) {
       res.status(500).json({ error: "Internal server error" });
     }

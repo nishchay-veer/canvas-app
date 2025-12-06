@@ -80,12 +80,20 @@ wss.on("connection", function connection(ws, request) {
     if (parsedData.type === "chat") {
       const room_id = parsedData.room_id;
       const message = parsedData.message;
+      const current_time = new Date();
 
-      await prismaClient.chat.create({
+      //store chat in db
+      const chat = await prismaClient.chat.create({
         data: {
           message,
           room_id,
           user_id,
+          created_at: current_time,
+        },
+        include: {
+          user: {
+            select: { name: true },
+          },
         },
       });
 
@@ -96,6 +104,7 @@ wss.on("connection", function connection(ws, request) {
               type: "chat",
               message: message,
               room_id,
+              user: chat.user,
             })
           );
         }
