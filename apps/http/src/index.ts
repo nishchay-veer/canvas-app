@@ -1,4 +1,5 @@
 import express, { Request, Response } from "express";
+import cors from "cors";
 import { JWT_SECRET } from "@repo/backend-common/config";
 import {
   CreateUserSchema,
@@ -12,6 +13,7 @@ import { authMiddleware, AuthRequest } from "./middleware";
 const app = express();
 const PORT = process.env.PORT || 3001;
 
+app.use(cors());
 app.use(express.json());
 
 app.post("/signup", async (req, res) => {
@@ -200,6 +202,76 @@ app.get(
       }
 
       res.json({ room });
+    } catch (error) {
+      res.status(500).json({ error: "Internal server error" });
+    }
+  }
+);
+
+// Get shapes for a room
+app.get(
+  "/rooms/:slug/shapes",
+  authMiddleware,
+  async (req: AuthRequest, res: Response) => {
+    try {
+      const { slug } = req.params;
+
+      if (!slug) {
+        res.status(400).json({ error: "Room slug is required" });
+        return;
+      }
+
+      const room = await prismaClient.room.findUnique({
+        where: { slug },
+      });
+
+      if (!room) {
+        res.status(404).json({ error: "Room not found" });
+        return;
+      }
+
+      const shapes = await prismaClient.shape.findMany({
+        where: { room_id: room.id },
+        orderBy: { created_at: "asc" },
+        include: {
+          user: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
+        },
+      });
+
+      res.json({ shapes });
+    } catch (error) {
+      res.status(500).json({ error: "Internal server error" });
+    }
+  }
+);
+
+// Delete all shapes in a room (clear canvas)
+app.delete(
+  "/rooms/:slug/shapes",
+  authMiddleware,
+  async (req: AuthRequest, res: Response) => {
+    try {
+      const { slug } = req.params;
+
+      const room = await prismaClient.room.findUnique({
+        where: { slug },
+      });
+
+      if (!room) {
+        res.status(404).json({ error: "Room not found" });
+        return;
+      }
+
+      await prismaClient.shape.deleteMany({
+        where: { room_id: room.id },
+      });
+
+      res.json({ message: "All shapes deleted" });
     } catch (error) {
       res.status(500).json({ error: "Internal server error" });
     }

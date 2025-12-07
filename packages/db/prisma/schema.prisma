@@ -15,6 +15,7 @@ model User {
   photo    String?
   rooms    Room[]
   chats    Chat[]
+  shapes   Shape[]
 }
 
 model Room {
@@ -24,6 +25,7 @@ model Room {
   admin      User     @relation(fields: [admin_id], references: [id])
   admin_id   String
   chats      Chat[]
+  shapes     Shape[]
 }
 
 model Chat {
@@ -34,4 +36,24 @@ model Chat {
   user       User     @relation(fields: [user_id], references: [id])
   room       Room     @relation(fields: [room_id], references: [id])
   created_at DateTime @default(now())
+}
+
+model Shape {
+  id          String   @id @default(uuid())
+  type        String // rectangle, ellipse, diamond, arrow, line, pencil, text
+  x           Float
+  y           Float
+  width       Float
+  height      Float
+  points      Json? // For pencil tool - array of {x, y} points
+  text        String? // For text tool
+  strokeColor String   @default("#1e1e1e")
+  fillColor   String   @default("transparent")
+  strokeWidth Int      @default(2)
+  room_id     Int
+  user_id     String
+  room        Room     @relation(fields: [room_id], references: [id])
+  user        User     @relation(fields: [user_id], references: [id])
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
 }
