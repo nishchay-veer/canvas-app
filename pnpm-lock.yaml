@@ -218,6 +218,9 @@ importers:
       prisma:
         specifier: ^6.2.1
         version: 6.19.0(typescript@5.9.2)
+      typescript:
+        specifier: ^5.0.0
+        version: 5.9.2
 
   packages/eslint-config:
     devDependencies:
