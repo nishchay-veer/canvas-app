@@ -27,6 +27,7 @@ export type Shape = {
   strokeColor: string;
   fillColor: string;
   strokeWidth: number;
+  user_id?: string; // ID of the user who created this shape
 };
 
 export type CanvasState = {

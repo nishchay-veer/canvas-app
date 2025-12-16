@@ -14,6 +14,24 @@ interface User {
 
 const users: User[] = [];
 
+// In-memory storage for shapes (room_id -> shapes array)
+interface InMemoryShape {
+  id: string;
+  type: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  points?: Array<{ x: number; y: number }> | null;
+  text?: string | null;
+  strokeColor: string;
+  fillColor: string;
+  strokeWidth: number;
+  user_id: string;
+}
+
+const roomShapes: Map<number, InMemoryShape[]> = new Map();
+
 function checkUser(token: string): string | null {
   try {
     const decoded = jwt.verify(token, JWT_SECRET);
@@ -89,6 +107,16 @@ wss.on("connection", function connection(ws, request) {
         );
       }
 
+      // Send all existing shapes to the newly joined user
+      const shapes = roomShapes.get(parsedData.room_id) || [];
+      ws.send(
+        JSON.stringify({
+          type: "initial_shapes",
+          shapes,
+          room_id: parsedData.room_id,
+        })
+      );
+
       // Notify others that a user joined
       broadcastToRoom(
         parsedData.room_id,
@@ -126,57 +154,40 @@ wss.on("connection", function connection(ws, request) {
 
       console.log("Creating shape:", { room_id, shapeData });
 
-      try {
-        // Store shape in database
-        const shape = await prismaClient.shape.create({
-          data: {
-            id: shapeData.id,
-            type: shapeData.type,
-            x: shapeData.x,
-            y: shapeData.y,
-            width: shapeData.width,
-            height: shapeData.height,
-            points: shapeData.points || null,
-            text: shapeData.text || null,
-            strokeColor: shapeData.strokeColor,
-            fillColor: shapeData.fillColor,
-            strokeWidth: shapeData.strokeWidth,
-            room_id,
-            user_id,
-          },
-          include: {
-            user: {
-              select: { id: true, name: true },
-            },
-          },
-        });
+      // Store shape in-memory
+      const shape: InMemoryShape = {
+        id: shapeData.id,
+        type: shapeData.type,
+        x: shapeData.x,
+        y: shapeData.y,
+        width: shapeData.width,
+        height: shapeData.height,
+        points: shapeData.points || null,
+        text: shapeData.text || null,
+        strokeColor: shapeData.strokeColor,
+        fillColor: shapeData.fillColor,
+        strokeWidth: shapeData.strokeWidth,
+        user_id,
+      };
 
-        console.log("Shape created successfully:", shape.id);
-
-        // Broadcast to all users in the room (including sender for confirmation)
-        users.forEach((user) => {
-          if (user.room_ids.includes(room_id)) {
-            user.ws.send(
-              JSON.stringify({
-                type: "shape",
-                shape: {
-                  ...shape,
-                  points: shape.points,
-                },
-                room_id,
-              })
-            );
-          }
-        });
-      } catch (error) {
-        console.error("Error saving shape:", error);
-        ws.send(
-          JSON.stringify({
-            type: "error",
-            message: `Failed to save shape: ${error instanceof Error ? error.message : "Unknown error"}`,
-          })
-        );
+      // Add shape to room's shape array
+      if (!roomShapes.has(room_id)) {
+        roomShapes.set(room_id, []);
       }
+      roomShapes.get(room_id)!.push(shape);
+
+      console.log("Shape created successfully:", shape.id);
+
+      // Broadcast to all users in the room (excluding sender)
+      broadcastToRoom(
+        room_id,
+        {
+          type: "shape",
+          shape,
+          room_id,
+        },
+        ws
+      );
     }
 
     // Handle shape deletion
@@ -184,51 +195,43 @@ wss.on("connection", function connection(ws, request) {
       const room_id = parsedData.room_id;
       const shape_id = parsedData.shape_id;
 
-      try {
-        await prismaClient.shape.delete({
-          where: { id: shape_id },
-        });
-
-        // Broadcast deletion to all users in the room
-        users.forEach((user) => {
-          if (user.room_ids.includes(room_id)) {
-            user.ws.send(
-              JSON.stringify({
-                type: "delete_shape",
-                shape_id,
-                room_id,
-              })
-            );
-          }
-        });
-      } catch (error) {
-        console.error("Error deleting shape:", error);
+      // Remove shape from in-memory storage
+      const shapes = roomShapes.get(room_id);
+      if (shapes) {
+        const index = shapes.findIndex((s) => s.id === shape_id);
+        if (index !== -1) {
+          shapes.splice(index, 1);
+        }
       }
+
+      // Broadcast deletion to all users in the room
+      broadcastToRoom(
+        room_id,
+        {
+          type: "delete_shape",
+          shape_id,
+          room_id,
+        },
+        ws
+      );
     }
 
     // Handle clear canvas
     if (parsedData.type === "clear_canvas") {
       const room_id = parsedData.room_id;
 
-      try {
-        await prismaClient.shape.deleteMany({
-          where: { room_id },
-        });
+      // Clear all shapes from in-memory storage
+      roomShapes.set(room_id, []);
 
-        // Broadcast clear to all users in the room
-        users.forEach((user) => {
-          if (user.room_ids.includes(room_id)) {
-            user.ws.send(
-              JSON.stringify({
-                type: "clear_canvas",
-                room_id,
-              })
-            );
-          }
-        });
-      } catch (error) {
-        console.error("Error clearing canvas:", error);
-      }
+      // Broadcast clear to all users in the room
+      broadcastToRoom(
+        room_id,
+        {
+          type: "clear_canvas",
+          room_id,
+        },
+        ws
+      );
     }
 
     // Handle chat messages

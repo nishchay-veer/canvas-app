@@ -15,13 +15,15 @@ import { drawGrid, drawShape } from "../utils/drawing";
 import { useCanvasSize } from "../hooks/useCanvasSize";
 import { useKeyboardShortcuts } from "../hooks/useKeyboardShortcuts";
 import { useHistory } from "../hooks/useHistory";
+import { useSocket } from "../hooks/useSocket";
 import Toolbar from "./Toolbar";
 import ColorPicker from "./ColorPicker";
 import ZoomControls from "./ZoomControls";
 import ActionBar from "./ActionBar";
 
-export default function Canvas() {
+export default function Canvas({ roomId }: { roomId: number | null }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const textInputRef = useRef<HTMLInputElement>(null);
   const [tool, setTool] = useState<Tool>(DEFAULT_TOOL);
   const [isDrawing, setIsDrawing] = useState(false);
   const [shapes, setShapes] = useState<Shape[]>([]);
@@ -34,25 +36,75 @@ export default function Canvas() {
   const [pan, setPan] = useState<Point>({ x: 0, y: 0 });
   const [isPanning, setIsPanning] = useState(false);
   const [lastPanPos, setLastPanPos] = useState<Point>({ x: 0, y: 0 });
+  const [isTextInputActive, setIsTextInputActive] = useState(false);
+  const [textInputPos, setTextInputPos] = useState<Point | null>(null);
+  const [textInputValue, setTextInputValue] = useState("");
 
-  const { saveToHistory, undo, redo, canUndo, canRedo } = useHistory();
+  // Get current user ID from localStorage
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  
+  useEffect(() => {
+    const userStr = typeof window !== "undefined" ? localStorage.getItem("user") : null;
+    if (userStr) {
+      try {
+        const user = JSON.parse(userStr);
+        setCurrentUserId(user.id || null);
+      } catch (e) {
+        console.error("Error parsing user from localStorage:", e);
+      }
+    }
+  }, []);
+
+  const { saveToHistory, addUserAction, undo, redo, canUndo, canRedo } = useHistory(currentUserId);
+  const { socket, isConnected, sendMessage } = useSocket(roomId);
 
   useCanvasSize(canvasRef);
 
-  // Simple undo/redo for local session (collaborative undo is complex)
+  // Undo removes the most recent shape created by current user
+  // This should be synchronized across all users' canvases
   const handleUndo = useCallback(() => {
-    const prevShapes = undo();
-    if (prevShapes) {
-      setShapes(prevShapes);
-    }
-  }, [undo]);
+    const updatedShapes = undo(shapes);
+    if (updatedShapes) {
+      // Find the shape that was removed (the difference between old and new)
+      const removedShape = shapes.find(
+        (shape) => !updatedShapes.some((s) => s.id === shape.id)
+      );
 
-  const handleRedo = useCallback(() => {
-    const nextShapes = redo();
-    if (nextShapes) {
-      setShapes(nextShapes);
+      if (removedShape && roomId && isConnected) {
+        // Send delete message to remove shape from all users' canvases
+        sendMessage({
+          type: "delete_shape",
+          room_id: roomId,
+          shape_id: removedShape.id,
+        });
+      }
+
+      setShapes(updatedShapes);
     }
-  }, [redo]);
+  }, [undo, shapes, roomId, isConnected, sendMessage]);
+
+  // Redo re-adds the most recent shape that was undone
+  // This should be synchronized across all users' canvases
+  const handleRedo = useCallback(() => {
+    const updatedShapes = redo(shapes);
+    if (updatedShapes) {
+      // Find the shape that was re-added (the difference between old and new)
+      const reAddedShape = updatedShapes.find(
+        (shape) => !shapes.some((s) => s.id === shape.id)
+      );
+
+      if (reAddedShape && roomId && isConnected) {
+        // Send shape message to add it back to all users' canvases
+        sendMessage({
+          type: "shape",
+          room_id: roomId,
+          shape: reAddedShape,
+        });
+      }
+
+      setShapes(updatedShapes);
+    }
+  }, [redo, shapes, roomId, isConnected, sendMessage]);
 
   useKeyboardShortcuts({
     setTool,
@@ -106,11 +158,26 @@ export default function Canvas() {
 
   const handleMouseDown = useCallback(
     (e: React.MouseEvent) => {
+      // Don't handle if clicking on text input
+      if ((e.target as HTMLElement).tagName === "INPUT") {
+        return;
+      }
+
       const pos = getMousePos(e);
 
       if (tool === "hand") {
         setIsPanning(true);
         setLastPanPos({ x: e.clientX, y: e.clientY });
+        return;
+      }
+
+      if (tool === "text") {
+        // Store canvas coordinates (will be converted to screen coordinates when rendering)
+        setTextInputPos(pos);
+        setTextInputValue("");
+        setIsTextInputActive(true);
+        e.preventDefault();
+        e.stopPropagation();
         return;
       }
 
@@ -129,20 +196,6 @@ export default function Canvas() {
         fillColor,
         strokeWidth,
       };
-
-      if (tool === "text") {
-        const text = prompt("Enter text:");
-        if (text) {
-          newShape.text = text;
-          newShape.width = text.length * 12;
-          newShape.height = 24;
-          // Send to server
-          saveToHistory([...shapes, newShape]);
-          setShapes((prev) => [...prev, newShape]);
-        }
-        setIsDrawing(false);
-        return;
-      }
 
       setCurrentShape(newShape);
     },
@@ -218,19 +271,50 @@ export default function Canvas() {
         (!currentShape.points || currentShape.points.length < 2);
 
       if (!isTooSmall && !hasTooFewPoints) {
-        saveToHistory([...shapes, currentShape]);
-        setShapes((prev) => [...prev, currentShape]);
+        // Add user_id to shape if current user exists
+        const shapeWithUserId: Shape = currentUserId
+          ? { ...currentShape, user_id: currentUserId }
+          : currentShape;
+
+        saveToHistory([...shapes, shapeWithUserId]);
+        setShapes((prev) => [...prev, shapeWithUserId]);
+        
+        // Track user action for undo
+        if (currentUserId) {
+          addUserAction({
+            type: "add",
+            shapeId: shapeWithUserId.id,
+            shape: shapeWithUserId,
+          });
+        }
+        
+        // Send shape to other users via WebSocket
+        if (roomId && isConnected) {
+          sendMessage({
+            type: "shape",
+            room_id: roomId,
+            shape: shapeWithUserId,
+          });
+        }
       }
     }
 
     setIsDrawing(false);
     setCurrentShape(null);
-  }, [isPanning, currentShape, isDrawing, tool, shapes, saveToHistory]);
+  }, [isPanning, currentShape, isDrawing, tool, shapes, saveToHistory, roomId, isConnected, sendMessage]);
 
   const handleClear = useCallback(() => {
     saveToHistory([]);
     setShapes([]);
-  }, [saveToHistory]);
+    
+    // Notify other users to clear canvas
+    if (roomId && isConnected) {
+      sendMessage({
+        type: "clear_canvas",
+        room_id: roomId,
+      });
+    }
+  }, [saveToHistory, roomId, isConnected, sendMessage]);
 
   const handleExport = useCallback(() => {
     const canvas = canvasRef.current;
@@ -248,6 +332,144 @@ export default function Canvas() {
   const zoomOut = useCallback(() => {
     setScale((s) => Math.max(s / ZOOM_FACTOR, MIN_SCALE));
   }, []);
+
+  // Auto-focus text input when it becomes active
+  useEffect(() => {
+    if (isTextInputActive && textInputRef.current) {
+      // Small delay to ensure the input is rendered before focusing
+      const timer = setTimeout(() => {
+        if (textInputRef.current) {
+          textInputRef.current.focus();
+        }
+      }, 0);
+      return () => clearTimeout(timer);
+    }
+  }, [isTextInputActive]);
+
+  // Handle WebSocket messages
+  useEffect(() => {
+    if (!socket) return;
+
+    const handleMessage = (event: MessageEvent) => {
+      try {
+        const data = JSON.parse(event.data);
+
+        if (data.type === "initial_shapes" && data.room_id === roomId) {
+          // Load initial shapes when joining room
+          setShapes(data.shapes);
+          saveToHistory(data.shapes);
+        } else if (data.type === "shape" && data.room_id === roomId) {
+          // Add shape received from another user
+          // Don't add to user action history - these are from other users
+          setShapes((prev) => {
+            // Check if shape already exists (avoid duplicates)
+            if (prev.some((s) => s.id === data.shape.id)) {
+              return prev;
+            }
+            // Only add if it's not from current user (to avoid adding our own shapes back)
+            if (data.shape.user_id && data.shape.user_id === currentUserId) {
+              return prev;
+            }
+            const newShapes = [...prev, data.shape];
+            saveToHistory(newShapes);
+            return newShapes;
+          });
+        } else if (data.type === "delete_shape" && data.room_id === roomId) {
+          // Remove shape deleted by another user
+          setShapes((prev) => {
+            const newShapes = prev.filter((s) => s.id !== data.shape_id);
+            saveToHistory(newShapes);
+            return newShapes;
+          });
+        } else if (data.type === "clear_canvas" && data.room_id === roomId) {
+          // Clear canvas when another user clears it
+          setShapes([]);
+          saveToHistory([]);
+        }
+      } catch (error) {
+        console.error("Error parsing WebSocket message:", error);
+      }
+    };
+
+    socket.addEventListener("message", handleMessage);
+
+      return () => {
+        socket.removeEventListener("message", handleMessage);
+      };
+    }, [socket, roomId, saveToHistory, currentUserId]);
+
+
+  // Handle text input submission
+  const handleTextSubmit = useCallback(() => {
+    // Don't submit if input is empty
+    if (!textInputValue.trim() || !textInputPos) {
+      setIsTextInputActive(false);
+      setTextInputPos(null);
+      setTextInputValue("");
+      return;
+    }
+
+    // textInputPos is already in canvas coordinates
+    const newShape: Shape = {
+      id: Date.now().toString(),
+      type: "text",
+      x: textInputPos.x,
+      y: textInputPos.y,
+      width: textInputValue.length * 12,
+      height: 24,
+      text: textInputValue,
+      strokeColor,
+      fillColor,
+      strokeWidth,
+      ...(currentUserId && { user_id: currentUserId }),
+    };
+
+    saveToHistory([...shapes, newShape]);
+    setShapes((prev) => [...prev, newShape]);
+    
+    // Track user action for undo
+    if (currentUserId) {
+      addUserAction({
+        type: "add",
+        shapeId: newShape.id,
+        shape: newShape,
+      });
+    }
+    
+    // Send text shape to other users via WebSocket
+    if (roomId && isConnected) {
+      sendMessage({
+        type: "shape",
+        room_id: roomId,
+        shape: newShape,
+      });
+    }
+    
+    setIsTextInputActive(false);
+    setTextInputPos(null);
+    setTextInputValue("");
+  }, [textInputValue, textInputPos, strokeColor, fillColor, strokeWidth, shapes, saveToHistory, roomId, isConnected, sendMessage]);
+
+  // Handle text input cancellation
+  const handleTextCancel = useCallback(() => {
+    setIsTextInputActive(false);
+    setTextInputPos(null);
+    setTextInputValue("");
+  }, []);
+
+  // Handle text input key events
+  const handleTextInputKeyDown = useCallback(
+    (e: React.KeyboardEvent<HTMLInputElement>) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        handleTextSubmit();
+      } else if (e.key === "Escape") {
+        e.preventDefault();
+        handleTextCancel();
+      }
+    },
+    [handleTextSubmit, handleTextCancel]
+  );
 
   return (
     <div className="h-screen w-screen bg-[#f8f9fa] overflow-hidden relative">
@@ -283,6 +505,50 @@ export default function Canvas() {
         onMouseUp={handleMouseUp}
         onMouseLeave={handleMouseUp}
       />
+      {isTextInputActive && textInputPos && (() => {
+        const canvas = canvasRef.current;
+        if (!canvas) return null;
+        const rect = canvas.getBoundingClientRect();
+        const screenX = rect.left + pan.x + textInputPos.x * scale;
+        const screenY = rect.top + pan.y + textInputPos.y * scale;
+        
+        return (
+          <input
+            ref={textInputRef}
+            type="text"
+            value={textInputValue}
+            onChange={(e) => setTextInputValue(e.target.value)}
+            onKeyDown={handleTextInputKeyDown}
+            onBlur={(e) => {
+              // Delay blur to allow Enter key to process first
+              setTimeout(() => {
+                if (document.activeElement !== textInputRef.current) {
+                  handleTextSubmit();
+                }
+              }, 100);
+            }}
+            onClick={(e) => e.stopPropagation()}
+            onMouseDown={(e) => e.stopPropagation()}
+            style={{
+              position: "absolute",
+              left: `${screenX}px`,
+              top: `${screenY}px`,
+              font: "20px Virgil, Segoe UI Emoji, sans-serif",
+              color: strokeColor,
+              background: "transparent",
+              border: "none",
+              outline: "none",
+              padding: 0,
+              margin: 0,
+              minWidth: "200px",
+              transform: `scale(${scale})`,
+              transformOrigin: "top left",
+              zIndex: 1000,
+            }}
+            className="text-input"
+          />
+        );
+      })()}
     </div>
   );
 }
