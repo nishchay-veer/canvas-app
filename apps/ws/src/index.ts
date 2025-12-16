@@ -84,6 +84,17 @@ wss.on("connection", function connection(ws, request) {
 
   console.log(`User ${user_id} connected. Total users: ${users.length + 1}`);
 
+  // Check if user already has a connection (reconnection case)
+  // Remove stale connections for this user
+  const existingUserIndex = users.findIndex(
+    (u) =>
+      u.user_id === user_id && u.ws !== ws && u.ws.readyState !== WebSocket.OPEN
+  );
+  if (existingUserIndex !== -1) {
+    console.log(`Removing stale connection for user ${user_id}`);
+    users.splice(existingUserIndex, 1);
+  }
+
   users.push({
     user_id,
     room_ids: [],
@@ -101,9 +112,19 @@ wss.on("connection", function connection(ws, request) {
     if (parsedData.type === "join_room") {
       const user = users.find((x) => x.ws === ws);
       if (user) {
-        user.room_ids.push(parsedData.room_id);
+        // Prevent duplicate room joins
+        if (!user.room_ids.includes(parsedData.room_id)) {
+          user.room_ids.push(parsedData.room_id);
+        }
+
+        // Count unique users in room (by user_id, not by connection)
+        const uniqueUsersInRoom = new Set(
+          users
+            .filter((u) => u.room_ids.includes(parsedData.room_id))
+            .map((u) => u.user_id)
+        );
         console.log(
-          `User ${user.user_id} joined room ${parsedData.room_id}. Users in room: ${users.filter((u) => u.room_ids.includes(parsedData.room_id)).length}`
+          `User ${user.user_id} joined room ${parsedData.room_id}. Unique users in room: ${uniqueUsersInRoom.size}`
         );
       }
 
@@ -275,16 +296,47 @@ wss.on("connection", function connection(ws, request) {
     if (userIndex !== -1) {
       const user = users[userIndex];
       if (user) {
+        console.log(
+          `User ${user.user_id} disconnected. Rooms: ${user.room_ids.join(", ")}`
+        );
+
         // Notify all rooms that user left
         user.room_ids.forEach((room_id) => {
-          broadcastToRoom(room_id, {
-            type: "user_left",
-            user_id: user.user_id,
-            room_id,
-          });
+          // Only notify if no other connections of this user are in the room
+          const otherConnectionsInRoom = users.filter(
+            (u) =>
+              u.user_id === user.user_id &&
+              u.ws !== ws &&
+              u.room_ids.includes(room_id)
+          );
+
+          if (otherConnectionsInRoom.length === 0) {
+            broadcastToRoom(room_id, {
+              type: "user_left",
+              user_id: user.user_id,
+              room_id,
+            });
+          }
         });
       }
       users.splice(userIndex, 1);
+      console.log(`Remaining users: ${users.length}`);
     }
   });
 });
+
+// Periodic cleanup of dead connections
+setInterval(() => {
+  const deadConnections = users.filter(
+    (u) => u.ws.readyState !== WebSocket.OPEN
+  );
+  if (deadConnections.length > 0) {
+    console.log(`Cleaning up ${deadConnections.length} dead connections`);
+    deadConnections.forEach((deadUser) => {
+      const index = users.indexOf(deadUser);
+      if (index !== -1) {
+        users.splice(index, 1);
+      }
+    });
+  }
+}, 30000); // Run every 30 seconds

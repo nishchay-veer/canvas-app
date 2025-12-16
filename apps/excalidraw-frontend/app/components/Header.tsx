@@ -2,6 +2,7 @@
 import { Menu, X, LogOut } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState, useCallback } from "react";
+import { Button } from "@repo/ui";
 
 export default function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -71,28 +72,29 @@ export default function Header() {
               <div className="w-24 h-9" />
             ) : !isAuthenticated ? (
               <>
-                <Link
-                  href="/signin"
-                  className="px-4 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors"
-                >
-                  Sign in
+                <Link href="/signin">
+                  <Button variant="ghost">Sign in</Button>
                 </Link>
-                <Link
-                  href="/signup"
-                  className="px-5 py-2.5 text-sm font-medium text-white bg-gray-900 rounded-full hover:bg-gray-800 transition-colors shadow-lg shadow-gray-900/10"
-                >
-                  Get started
+                <Link href="/signup">
+                  <Button
+                    variant="primary"
+                    className="rounded-full shadow-lg shadow-gray-900/10"
+                  >
+                    Get started
+                  </Button>
                 </Link>
               </>
             ) : (
               <>
-                <button
+                <Button
                   onClick={handleLogout}
-                  className="p-2.5 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-full transition-colors"
+                  variant="ghost"
+                  size="sm"
+                  className="p-2.5 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-full"
                   title="Logout"
                 >
                   <LogOut className="w-4 h-4" />
-                </button>
+                </Button>
               </>
             )}
           </div>
@@ -116,27 +118,35 @@ export default function Header() {
             <div className="flex flex-col space-y-2">
               {!isAuthenticated ? (
                 <>
-                  <Link
-                    href="/signin"
-                    className="px-4 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50 rounded-lg transition"
-                  >
-                    Sign in
+                  <Link href="/signin">
+                    <Button
+                      variant="ghost"
+                      fullWidth
+                      className="justify-start text-gray-700 hover:bg-gray-50"
+                    >
+                      Sign in
+                    </Button>
                   </Link>
-                  <Link
-                    href="/signup"
-                    className="px-4 py-3 text-sm font-medium text-white bg-gray-900 rounded-lg text-center"
-                  >
-                    Get started
+                  <Link href="/signup">
+                    <Button
+                      variant="primary"
+                      fullWidth
+                      className="bg-gray-900 text-white"
+                    >
+                      Get started
+                    </Button>
                   </Link>
                 </>
               ) : (
                 <>
-                  <button
+                  <Button
                     onClick={handleLogout}
-                    className="px-4 py-3 text-sm font-medium text-red-600 hover:bg-red-50 rounded-lg text-left"
+                    variant="ghost"
+                    fullWidth
+                    className="justify-start text-red-600 hover:bg-red-50"
                   >
                     Logout
-                  </button>
+                  </Button>
                 </>
               )}
             </div>

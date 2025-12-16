@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Button } from "@repo/ui";
 
 export default function CTA() {
   return (
@@ -28,11 +29,10 @@ export default function CTA() {
             </p>
 
             <div className="flex flex-col sm:flex-row gap-3 justify-center">
-              <Link
-                href="#"
-                className="inline-flex items-center justify-center gap-2 px-6 py-3 text-base font-medium text-gray-300 border border-gray-700 rounded-lg hover:border-gray-600 hover:text-white transition-all"
-              >
-                <span>View examples</span>
+              <Link href="#">
+                <Button variant="secondary" size="lg">
+                  View examples
+                </Button>
               </Link>
             </div>
 

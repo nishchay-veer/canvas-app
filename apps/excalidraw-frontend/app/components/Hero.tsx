@@ -4,6 +4,7 @@ import { PlusCircle, LogIn, ArrowRight } from "lucide-react";
 import { useState, useCallback, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import axios from "axios";
+import { Modal, Input, Button, Toast } from "@repo/ui";
 
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_HTTP_URL || "http://localhost:3001";
@@ -151,28 +152,32 @@ export default function Hero() {
           ) : isAuthenticated ? (
             <>
               <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
-                <button
+                <Button
                   onClick={() => {
                     setShowCreateModal(true);
                     setShowJoinModal(false);
                     setError(null);
                   }}
-                  className="group inline-flex items-center gap-2 px-6 py-3 text-base font-medium text-white bg-gray-900 rounded-lg hover:bg-gray-800 transition-all shadow-sm hover:shadow-md"
+                  variant="primary"
+                  size="lg"
+                  className="shadow-sm hover:shadow-md"
+                  rightIcon={<PlusCircle className="w-4 h-4" />}
                 >
-                  <span>Create room</span>
-                  <PlusCircle className="w-4 h-4 group-hover:scale-110 transition-transform" />
-                </button>
-                <button
+                  Create room
+                </Button>
+                <Button
                   onClick={() => {
                     setShowJoinModal(true);
                     setShowCreateModal(false);
                     setError(null);
                   }}
-                  className="inline-flex items-center gap-2 px-6 py-3 text-base font-medium text-gray-600 bg-white/80 backdrop-blur-sm border border-gray-200 rounded-lg hover:border-gray-300 hover:bg-white transition-all"
+                  variant="outline"
+                  size="lg"
+                  className="backdrop-blur-sm"
+                  leftIcon={<LogIn className="w-4 h-4" />}
                 >
-                  <LogIn className="w-4 h-4" />
-                  <span>Join room</span>
-                </button>
+                  Join room
+                </Button>
               </div>
               <p className="mt-6 text-sm text-gray-400">
                 Privacy-first • Works in your browser • Live collaboration
@@ -181,13 +186,15 @@ export default function Hero() {
           ) : (
             <>
               <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
-                <button
+                <Button
                   onClick={() => router.push("/signin")}
-                  className="group inline-flex items-center gap-2 px-6 py-3 text-base font-medium text-white bg-gray-900 rounded-lg hover:bg-gray-800 transition-all shadow-sm hover:shadow-md"
+                  variant="primary"
+                  size="lg"
+                  className="shadow-sm hover:shadow-md"
+                  rightIcon={<ArrowRight className="w-4 h-4" />}
                 >
-                  <span>Sign in to start</span>
-                  <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
-                </button>
+                  Sign in to start
+                </Button>
               </div>
               <p className="mt-6 text-sm text-gray-400">
                 Sign in to create or join rooms and start collaborating.
@@ -433,85 +440,67 @@ export default function Hero() {
       </div>
 
       {/* Create/Join Modal */}
-      {(showCreateModal || showJoinModal) && (
-        <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50 px-4">
-          <div className="bg-white rounded-xl shadow-2xl max-w-md w-full p-6 relative border border-gray-200">
-            <button
-              onClick={closeModals}
-              className="absolute top-3 right-3 text-gray-400 hover:text-gray-600 transition-colors"
-              aria-label="Close"
-            >
-              <svg
-                className="w-5 h-5"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M6 18L18 6M6 6l12 12"
-                />
-              </svg>
-            </button>
-            <h3 className="font-heading text-xl font-bold text-gray-900 mb-2">
-              {showCreateModal ? "Create a room" : "Join a room"}
-            </h3>
-            <p className="text-sm text-gray-500 mb-4">
-              Enter a room slug (e.g.,{" "}
-              <code className="bg-gray-100 px-1.5 py-0.5 rounded text-gray-700">
-                team-board
-              </code>
-              )
-            </p>
-            <input
-              type="text"
-              className="w-full border border-gray-200 rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all"
-              placeholder="room-slug"
-              value={showCreateModal ? createSlug : joinSlug}
-              onChange={(e) =>
-                showCreateModal
-                  ? setCreateSlug(e.target.value)
-                  : setJoinSlug(e.target.value)
+      <Modal
+        isOpen={showCreateModal || showJoinModal}
+        onClose={closeModals}
+        title={showCreateModal ? "Create a room" : "Join a room"}
+        className="bg-white"
+      >
+        <p className="text-sm text-gray-500 mb-4">
+          Enter a room slug (e.g.,{" "}
+          <code className="bg-gray-100 px-1.5 py-0.5 rounded text-gray-700">
+            team-board
+          </code>
+          )
+        </p>
+        <Input
+          type="text"
+          className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-gray-900 focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all"
+          placeholder="room-slug"
+          value={showCreateModal ? createSlug : joinSlug}
+          onChange={(e) =>
+            showCreateModal
+              ? setCreateSlug(e.target.value)
+              : setJoinSlug(e.target.value)
+          }
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              if (showCreateModal) {
+                handleCreate();
+              } else {
+                handleJoin();
               }
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  showCreateModal ? handleCreate() : handleJoin();
-                }
-              }}
-            />
-            {error && <p className="text-sm text-red-600 mt-2">{error}</p>}
-            <div className="mt-6 flex justify-end gap-3">
-              <button
-                onClick={closeModals}
-                className="px-4 py-2 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={showCreateModal ? handleCreate : handleJoin}
-                disabled={isSubmitting}
-                className="px-4 py-2 rounded-lg bg-gray-900 text-white hover:bg-gray-800 disabled:opacity-60 transition-colors"
-              >
-                {isSubmitting
-                  ? "Submitting..."
-                  : showCreateModal
-                    ? "Create"
-                    : "Join"}
-              </button>
-            </div>
-          </div>
+            }
+          }}
+          error={error || undefined}
+        />
+        <div className="mt-6 flex justify-end gap-3">
+          <Button
+            onClick={closeModals}
+            variant="outline"
+            className="border-gray-200 text-gray-600 hover:bg-gray-50"
+          >
+            Cancel
+          </Button>
+          <Button
+            onClick={showCreateModal ? handleCreate : handleJoin}
+            disabled={isSubmitting}
+            isLoading={isSubmitting}
+            variant="primary"
+            className="bg-gray-900 text-white hover:bg-gray-800"
+          >
+            {showCreateModal ? "Create" : "Join"}
+          </Button>
         </div>
-      )}
+      </Modal>
 
       {/* Toast */}
       {toastMessage && (
-        <div className="fixed bottom-6 right-6 z-50">
-          <div className="bg-red-500 text-white px-4 py-3 rounded-lg shadow-lg">
-            {toastMessage}
-          </div>
-        </div>
+        <Toast
+          message={toastMessage}
+          type="error"
+          onClose={() => setToastMessage(null)}
+        />
       )}
     </section>
   );
