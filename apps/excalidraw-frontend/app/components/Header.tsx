@@ -1,128 +1,145 @@
 "use client";
-import { Menu, X, LogOut, Sparkles } from "lucide-react";
+import { Menu, X, LogOut } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState, useCallback } from "react";
 
 export default function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+    setMounted(true);
+    // Check auth status after mount to avoid hydration mismatch
+    const token = localStorage.getItem("token");
     setIsAuthenticated(!!token);
+
+    const handleScroll = () => {
+      setScrolled(window.scrollY > 10);
+    };
+
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
   const handleLogout = useCallback(() => {
     localStorage.removeItem("token");
     localStorage.removeItem("user");
     setIsAuthenticated(false);
-    // Reload to clear any user-specific state
     window.location.reload();
   }, []);
 
   return (
-    <header className="fixed top-0 left-0 right-0 bg-white/85 backdrop-blur-md z-50 border-b border-gray-200/80 shadow-sm">
-      <nav className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <header
+      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
+        scrolled
+          ? "bg-white/80 backdrop-blur-xl border-b border-gray-200/50 shadow-sm"
+          : "bg-transparent"
+      }`}
+    >
+      <nav className="max-w-6xl mx-auto px-6">
         <div className="flex justify-between items-center h-16">
-          <div className="flex items-center space-x-2">
-            <svg
-              width="32"
-              height="32"
-              viewBox="0 0 32 32"
-              fill="none"
-              className="text-blue-600"
-            >
-              <path
-                d="M5 8 L8 5 L15 12 L28 3 L30 5 L15 20 Z"
-                stroke="currentColor"
-                strokeWidth="2"
+          {/* Logo */}
+          <Link href="/" className="flex items-center space-x-2 group">
+            <div className="w-8 h-8 bg-linear-to-br from-indigo-500 to-purple-600 rounded-lg flex items-center justify-center shadow-lg shadow-indigo-500/25 group-hover:shadow-indigo-500/40 transition-shadow">
+              <svg
+                width="18"
+                height="18"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="white"
+                strokeWidth="2.5"
                 strokeLinecap="round"
                 strokeLinejoin="round"
-                fill="none"
-              />
-              <rect
-                x="3"
-                y="10"
-                width="20"
-                height="18"
-                rx="2"
-                stroke="currentColor"
-                strokeWidth="2"
-                fill="none"
-              />
-            </svg>
-            <span className="text-xl font-bold text-gray-900">Excalidraw</span>
-            <span className="hidden sm:inline-flex items-center space-x-1 text-xs font-medium text-blue-700 bg-blue-50 border border-blue-100 px-2 py-1 rounded-full">
-              <Sparkles className="w-3 h-3" />
-              <span>Realtime</span>
+              >
+                <path d="M12 19l7-7 3 3-7 7-3-3z" />
+                <path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z" />
+                <path d="M2 2l7.586 7.586" />
+                <circle cx="11" cy="11" r="2" />
+              </svg>
+            </div>
+            <span className="font-display text-xl font-bold text-gray-900">
+              Draw
             </span>
-          </div>
+          </Link>
 
-          <div className="hidden md:flex items-center space-x-4">
-            {!isAuthenticated ? (
+          {/* Desktop nav */}
+          <div className="hidden md:flex items-center space-x-2">
+            {!mounted ? (
+              // Placeholder during SSR to prevent hydration mismatch
+              <div className="w-24 h-9" />
+            ) : !isAuthenticated ? (
               <>
                 <Link
                   href="/signin"
-                  className="text-gray-700 hover:text-gray-900 transition"
+                  className="px-4 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors"
                 >
                   Sign in
                 </Link>
                 <Link
                   href="/signup"
-                  className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition"
+                  className="px-5 py-2.5 text-sm font-medium text-white bg-gray-900 rounded-full hover:bg-gray-800 transition-colors shadow-lg shadow-gray-900/10"
                 >
-                  Sign up
+                  Get started
                 </Link>
               </>
             ) : (
-              <button
-                onClick={handleLogout}
-                className="inline-flex items-center space-x-2 px-4 py-2 text-sm font-medium text-white bg-red-500 rounded-lg hover:bg-red-600 transition"
-              >
-                <LogOut className="w-4 h-4" />
-                <span>Logout</span>
-              </button>
+              <>
+                <button
+                  onClick={handleLogout}
+                  className="p-2.5 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-full transition-colors"
+                  title="Logout"
+                >
+                  <LogOut className="w-4 h-4" />
+                </button>
+              </>
             )}
           </div>
 
+          {/* Mobile menu button */}
           <button
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
             className="md:hidden p-2 rounded-lg hover:bg-gray-100 transition"
           >
             {mobileMenuOpen ? (
-              <X className="w-6 h-6 text-gray-700" />
+              <X className="w-5 h-5 text-gray-700" />
             ) : (
-              <Menu className="w-6 h-6 text-gray-700" />
+              <Menu className="w-5 h-5 text-gray-700" />
             )}
           </button>
         </div>
 
-        {mobileMenuOpen && (
-          <div className="md:hidden py-4 space-y-4 border-t border-gray-200">
-            {!isAuthenticated ? (
-              <>
-                <Link
-                  href="/signin"
-                  className="block text-gray-700 hover:text-gray-900 transition"
-                >
-                  Sign in
-                </Link>
-                <Link
-                  href="/signup"
-                  className="block px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition"
-                >
-                  Sign up
-                </Link>
-              </>
-            ) : (
-              <button
-                onClick={handleLogout}
-                className="w-full inline-flex items-center justify-center space-x-2 px-4 py-2 text-sm font-medium text-white bg-red-500 rounded-lg hover:bg-red-600 transition"
-              >
-                <LogOut className="w-4 h-4" />
-                <span>Logout</span>
-              </button>
-            )}
+        {/* Mobile menu */}
+        {mobileMenuOpen && mounted && (
+          <div className="md:hidden py-4 border-t border-gray-100">
+            <div className="flex flex-col space-y-2">
+              {!isAuthenticated ? (
+                <>
+                  <Link
+                    href="/signin"
+                    className="px-4 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50 rounded-lg transition"
+                  >
+                    Sign in
+                  </Link>
+                  <Link
+                    href="/signup"
+                    className="px-4 py-3 text-sm font-medium text-white bg-gray-900 rounded-lg text-center"
+                  >
+                    Get started
+                  </Link>
+                </>
+              ) : (
+                <>
+                  <button
+                    onClick={handleLogout}
+                    className="px-4 py-3 text-sm font-medium text-red-600 hover:bg-red-50 rounded-lg text-left"
+                  >
+                    Logout
+                  </button>
+                </>
+              )}
+            </div>
           </div>
         )}
       </nav>

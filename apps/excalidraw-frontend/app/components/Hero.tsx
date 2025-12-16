@@ -1,11 +1,12 @@
 "use client";
 
-import { ArrowRight, PlusCircle, LogIn, Sparkles } from "lucide-react";
+import { PlusCircle, LogIn, ArrowRight } from "lucide-react";
 import { useState, useCallback, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import axios from "axios";
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_HTTP_URL || "http://localhost:3001";
+const API_BASE_URL =
+  process.env.NEXT_PUBLIC_HTTP_URL || "http://localhost:3001";
 
 export default function Hero() {
   const router = useRouter();
@@ -17,9 +18,11 @@ export default function Hero() {
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+    setMounted(true);
+    const token = localStorage.getItem("token");
     setIsAuthenticated(!!token);
   }, []);
 
@@ -30,7 +33,7 @@ export default function Hero() {
       return;
     }
 
-    const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+    const token = localStorage.getItem("token");
     if (!token) {
       setError("Please sign in to create a room");
       router.push("/signin");
@@ -49,7 +52,7 @@ export default function Hero() {
       );
       setShowCreateModal(false);
       router.push(`/canvas/${slug}`);
-    } catch (e) {
+    } catch {
       setError("Failed to create room. Please try a different slug.");
     } finally {
       setIsSubmitting(false);
@@ -62,7 +65,7 @@ export default function Hero() {
       setError("Room slug is required");
       return;
     }
-    const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+    const token = localStorage.getItem("token");
     if (!token) {
       setError("Please sign in to join a room");
       router.push("/signin");
@@ -71,7 +74,6 @@ export default function Hero() {
     try {
       setIsSubmitting(true);
       setError(null);
-      // Verify room exists before redirecting
       await axios.get(`${API_BASE_URL}/rooms/${slug}`, {
         headers: { authorization: `Bearer ${token}` },
       });
@@ -103,25 +105,50 @@ export default function Hero() {
   }, []);
 
   return (
-    <section className="relative overflow-hidden">
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(59,130,246,0.08),transparent_25%),radial-gradient(circle_at_80%_10%,rgba(14,165,233,0.08),transparent_22%),radial-gradient(circle_at_50%_80%,rgba(16,185,129,0.08),transparent_25%)]" />
-      <div className="absolute inset-0 bg-gradient-to-b from-white via-white/80 to-transparent" />
-
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-28 pb-16 relative">
-        <div className="text-center max-w-4xl mx-auto">
-          <div className="inline-flex items-center space-x-2 px-4 py-2 rounded-full bg-white/90 border border-gray-200 shadow-sm text-sm font-medium text-gray-700 mb-4">
-            <Sparkles className="w-4 h-4 text-blue-600" />
-            <span>Live collaborative canvas</span>
+    <section className="pt-32 pb-24 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-5xl mx-auto">
+        {/* Main content */}
+        <div className="text-center animate-fade-up">
+          {/* Badge */}
+          <div className="inline-flex items-center gap-2 px-3 py-1 mb-8 text-sm font-medium text-gray-600 bg-white/80 backdrop-blur-sm border border-gray-200 rounded-full">
+            <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
+            <span>Open source & free forever</span>
           </div>
-          <h1 className="text-5xl sm:text-6xl lg:text-7xl font-bold text-gray-900 mb-6 leading-tight">
-            Sketch, share, and collaborate
-            <span className="text-blue-600"> in real time</span>
+
+          {/* Headline */}
+          <h1 className="font-heading text-5xl sm:text-6xl lg:text-7xl font-bold text-gray-900 mb-6 leading-[1.1] tracking-tight">
+            Where ideas take
+            <span className="relative mx-3">
+              <span className="relative z-10">shape</span>
+              <svg
+                className="absolute -bottom-2 left-0 w-full h-3 text-blue-500/30"
+                viewBox="0 0 100 12"
+                preserveAspectRatio="none"
+              >
+                <path
+                  d="M0 8 Q25 0, 50 8 T100 8"
+                  stroke="currentColor"
+                  strokeWidth="4"
+                  fill="none"
+                  strokeLinecap="round"
+                />
+              </svg>
+            </span>
           </h1>
-          <p className="text-xl sm:text-2xl text-gray-600 mb-10 leading-relaxed max-w-3xl mx-auto">
-            A playful Excalidraw-inspired canvas with instant multiplayer.
-            Create a room or join one and start drawing together.
+
+          {/* Subheadline */}
+          <p className="text-lg sm:text-xl text-gray-500 mb-12 leading-relaxed max-w-2xl mx-auto">
+            A minimal, collaborative whiteboard for sketching diagrams that feel
+            hand-drawn. Real-time sync, infinite canvas, zero friction.
           </p>
-          {isAuthenticated ? (
+
+          {/* CTA Buttons */}
+          {!mounted ? (
+            <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
+              <div className="h-12 w-40 bg-gray-100 rounded-lg animate-pulse" />
+              <div className="h-12 w-36 bg-gray-100 rounded-lg animate-pulse" />
+            </div>
+          ) : isAuthenticated ? (
             <>
               <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
                 <button
@@ -130,10 +157,10 @@ export default function Hero() {
                     setShowJoinModal(false);
                     setError(null);
                   }}
-                  className="group px-8 py-4 text-lg font-semibold text-white bg-blue-600 rounded-xl hover:bg-blue-700 transition shadow-lg hover:shadow-xl flex items-center space-x-2"
+                  className="group inline-flex items-center gap-2 px-6 py-3 text-base font-medium text-white bg-gray-900 rounded-lg hover:bg-gray-800 transition-all shadow-sm hover:shadow-md"
                 >
                   <span>Create room</span>
-                  <PlusCircle className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                  <PlusCircle className="w-4 h-4 group-hover:scale-110 transition-transform" />
                 </button>
                 <button
                   onClick={() => {
@@ -141,13 +168,13 @@ export default function Hero() {
                     setShowCreateModal(false);
                     setError(null);
                   }}
-                  className="px-8 py-4 text-lg font-semibold text-gray-900 bg-white border-2 border-gray-200 rounded-xl hover:border-gray-300 transition shadow-md hover:shadow-lg flex items-center space-x-2"
+                  className="inline-flex items-center gap-2 px-6 py-3 text-base font-medium text-gray-600 bg-white/80 backdrop-blur-sm border border-gray-200 rounded-lg hover:border-gray-300 hover:bg-white transition-all"
                 >
-                  <LogIn className="w-5 h-5" />
+                  <LogIn className="w-4 h-4" />
                   <span>Join room</span>
                 </button>
               </div>
-              <p className="mt-6 text-sm text-gray-500">
+              <p className="mt-6 text-sm text-gray-400">
                 Privacy-first • Works in your browser • Live collaboration
               </p>
             </>
@@ -156,181 +183,297 @@ export default function Hero() {
               <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
                 <button
                   onClick={() => router.push("/signin")}
-                  className="group px-8 py-4 text-lg font-semibold text-white bg-blue-600 rounded-xl hover:bg-blue-700 transition shadow-lg hover:shadow-xl flex items-center space-x-2"
+                  className="group inline-flex items-center gap-2 px-6 py-3 text-base font-medium text-white bg-gray-900 rounded-lg hover:bg-gray-800 transition-all shadow-sm hover:shadow-md"
                 >
                   <span>Sign in to start</span>
-                  <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                  <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
                 </button>
               </div>
-              <p className="mt-6 text-sm text-gray-500">
+              <p className="mt-6 text-sm text-gray-400">
                 Sign in to create or join rooms and start collaborating.
               </p>
             </>
           )}
+
+          {/* Trust indicators */}
+          <div className="mt-12 flex flex-wrap justify-center gap-6 text-sm text-gray-400">
+            <span className="flex items-center gap-1.5">
+              <svg
+                className="w-4 h-4"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M5 13l4 4L19 7"
+                />
+              </svg>
+              No account needed
+            </span>
+            <span className="flex items-center gap-1.5">
+              <svg
+                className="w-4 h-4"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M5 13l4 4L19 7"
+                />
+              </svg>
+              Works offline
+            </span>
+            <span className="flex items-center gap-1.5">
+              <svg
+                className="w-4 h-4"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M5 13l4 4L19 7"
+                />
+              </svg>
+              End-to-end encrypted
+            </span>
+          </div>
         </div>
 
-        <div className="mt-16">
-          <div className="relative bg-white/90 backdrop-blur-md rounded-2xl shadow-2xl border border-gray-200 overflow-hidden">
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(59,130,246,0.06),transparent_35%),radial-gradient(circle_at_80%_0%,rgba(14,165,233,0.05),transparent_30%)]" />
-            <div className="relative p-4 sm:p-8">
-              <div className="aspect-video bg-[#f7f8fb] rounded-xl border border-dashed border-gray-300 flex items-center justify-center">
-                <svg
-                  viewBox="0 0 800 450"
-                  className="w-full h-full p-8"
-                  fill="none"
-                  xmlns="http://www.w3.org/2000/svg"
-                >
-                  <rect
-                    x="50"
-                    y="80"
-                    width="200"
-                    height="120"
-                    rx="12"
-                    stroke="#2563eb"
-                    strokeWidth="3"
-                    fill="#e8f0ff"
-                  />
-                  <text
-                    x="150"
-                    y="145"
-                    textAnchor="middle"
-                    className="text-lg font-medium"
-                    fill="#1e40af"
-                  >
-                    Component
-                  </text>
-
-                  <rect
-                    x="550"
-                    y="80"
-                    width="200"
-                    height="120"
-                    rx="12"
-                    stroke="#10b981"
-                    strokeWidth="3"
-                    fill="#e7f8f0"
-                  />
-                  <text
-                    x="650"
-                    y="145"
-                    textAnchor="middle"
-                    className="text-lg font-medium"
-                    fill="#047857"
-                  >
-                    Database
-                  </text>
-
-                  <rect
-                    x="300"
-                    y="250"
-                    width="200"
-                    height="120"
-                    rx="12"
-                    stroke="#f59e0b"
-                    strokeWidth="3"
-                    fill="#fff3d9"
-                  />
-                  <text
-                    x="400"
-                    y="315"
-                    textAnchor="middle"
-                    className="text-lg font-medium"
-                    fill="#b45309"
-                  >
-                    API
-                  </text>
-
-                  <path
-                    d="M 250 140 L 300 140"
-                    stroke="#6b7280"
-                    strokeWidth="2"
-                    markerEnd="url(#arrowhead)"
-                  />
-                  <path
-                    d="M 500 140 L 550 140"
-                    stroke="#6b7280"
-                    strokeWidth="2"
-                    markerEnd="url(#arrowhead)"
-                  />
-                  <path
-                    d="M 150 200 L 350 250"
-                    stroke="#6b7280"
-                    strokeWidth="2"
-                    markerEnd="url(#arrowhead)"
-                  />
-                  <path
-                    d="M 650 200 L 450 250"
-                    stroke="#6b7280"
-                    strokeWidth="2"
-                    markerEnd="url(#arrowhead)"
-                  />
-
-                  <defs>
-                    <marker
-                      id="arrowhead"
-                      markerWidth="10"
-                      markerHeight="10"
-                      refX="9"
-                      refY="3"
-                      orient="auto"
-                    >
-                      <polygon points="0 0, 10 3, 0 6" fill="#6b7280" />
-                    </marker>
-                  </defs>
-                </svg>
+        {/* Canvas Preview */}
+        <div
+          className="mt-20 animate-fade-up"
+          style={{ animationDelay: "0.2s" }}
+        >
+          <div className="relative bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+            {/* Mock toolbar */}
+            <div className="flex items-center gap-3 px-4 py-3 border-b border-gray-100 bg-gray-50/50">
+              <div className="flex gap-1.5">
+                <div className="w-3 h-3 rounded-full bg-gray-200" />
+                <div className="w-3 h-3 rounded-full bg-gray-200" />
+                <div className="w-3 h-3 rounded-full bg-gray-200" />
               </div>
-              <div className="mt-4 flex flex-col sm:flex-row sm:items-center sm:justify-between text-sm text-gray-600 gap-3">
-                <div className="flex flex-wrap items-center gap-3">
-                  <span className="flex items-center space-x-1">
-                    <div className="w-3 h-3 bg-blue-500 rounded" />
-                    <span>Rectangle</span>
-                  </span>
-                  <span className="flex items-center space-x-1">
-                    <div className="w-3 h-3 bg-green-500 rounded-full" />
-                    <span>Ellipse</span>
-                  </span>
-                  <span className="flex items-center space-x-1">
-                    <div className="w-8 h-0.5 bg-gray-500" />
-                    <span>Arrow</span>
-                  </span>
-                  <span className="flex items-center space-x-1">
-                    <div className="w-3 h-3 bg-amber-500 rounded" />
-                    <span>API</span>
-                  </span>
+              <div className="flex-1 flex justify-center gap-2">
+                {["▢", "○", "△", "—", "✎"].map((icon, i) => (
+                  <div
+                    key={i}
+                    className={`w-8 h-8 flex items-center justify-center text-sm rounded ${
+                      i === 0
+                        ? "bg-gray-900 text-white"
+                        : "text-gray-400 hover:bg-gray-100"
+                    }`}
+                  >
+                    {icon}
+                  </div>
+                ))}
+              </div>
+              <div className="text-xs text-gray-400">2 collaborators</div>
+            </div>
+
+            {/* Canvas area with hand-drawn shapes */}
+            <div
+              className="aspect-video relative bg-[#fafafa]"
+              style={{
+                backgroundImage: `
+                linear-gradient(rgba(0,0,0,0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0,0,0,0.03) 1px, transparent 1px)
+              `,
+                backgroundSize: "24px 24px",
+              }}
+            >
+              <svg
+                viewBox="0 0 800 450"
+                className="w-full h-full"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                {/* Hand-drawn style rectangle */}
+                <path
+                  d="M100 100 Q102 98, 250 100 Q253 102, 250 180 Q248 183, 100 180 Q97 178, 100 100"
+                  stroke="#374151"
+                  strokeWidth="2"
+                  fill="#f3f4f6"
+                  strokeLinecap="round"
+                />
+                <text
+                  x="175"
+                  y="145"
+                  textAnchor="middle"
+                  className="text-sm"
+                  fill="#374151"
+                  fontFamily="var(--font-body)"
+                >
+                  User Flow
+                </text>
+
+                {/* Hand-drawn ellipse */}
+                <ellipse
+                  cx="500"
+                  cy="140"
+                  rx="80"
+                  ry="50"
+                  stroke="#374151"
+                  strokeWidth="2"
+                  fill="#fef3c7"
+                  strokeDasharray="4 2"
+                />
+                <text
+                  x="500"
+                  y="145"
+                  textAnchor="middle"
+                  className="text-sm"
+                  fill="#374151"
+                  fontFamily="var(--font-body)"
+                >
+                  Decision
+                </text>
+
+                {/* Connector arrow */}
+                <path
+                  d="M250 140 Q350 130, 420 140"
+                  stroke="#374151"
+                  strokeWidth="2"
+                  fill="none"
+                  strokeLinecap="round"
+                  markerEnd="url(#arrow)"
+                />
+
+                {/* Another rectangle below */}
+                <path
+                  d="M150 280 Q153 277, 320 280 Q323 283, 320 360 Q317 363, 150 360 Q147 357, 150 280"
+                  stroke="#374151"
+                  strokeWidth="2"
+                  fill="#dbeafe"
+                  strokeLinecap="round"
+                />
+                <text
+                  x="235"
+                  y="325"
+                  textAnchor="middle"
+                  className="text-sm"
+                  fill="#374151"
+                  fontFamily="var(--font-body)"
+                >
+                  Process
+                </text>
+
+                {/* Connector from decision to process */}
+                <path
+                  d="M500 190 Q500 250, 320 300"
+                  stroke="#374151"
+                  strokeWidth="2"
+                  fill="none"
+                  strokeLinecap="round"
+                  strokeDasharray="6 4"
+                  markerEnd="url(#arrow)"
+                />
+
+                {/* Small floating elements for visual interest */}
+                <circle
+                  cx="650"
+                  cy="320"
+                  r="30"
+                  stroke="#374151"
+                  strokeWidth="2"
+                  fill="#fce7f3"
+                />
+                <text
+                  x="650"
+                  y="325"
+                  textAnchor="middle"
+                  className="text-xs"
+                  fill="#374151"
+                >
+                  End
+                </text>
+
+                {/* Cursor indicator */}
+                <g transform="translate(580, 120)">
+                  <path
+                    d="M0 0 L0 16 L4 12 L8 20 L10 19 L6 11 L12 11 Z"
+                    fill="#3b82f6"
+                  />
+                  <circle cx="16" cy="24" r="8" fill="#3b82f6" opacity="0.2" />
+                </g>
+
+                <defs>
+                  <marker
+                    id="arrow"
+                    markerWidth="10"
+                    markerHeight="10"
+                    refX="9"
+                    refY="3"
+                    orient="auto"
+                  >
+                    <path d="M0 0 L10 3 L0 6 Z" fill="#374151" />
+                  </marker>
+                </defs>
+              </svg>
+
+              {/* Floating user avatars */}
+              <div className="absolute bottom-4 right-4 flex -space-x-2">
+                <div className="w-8 h-8 rounded-full bg-blue-500 border-2 border-white flex items-center justify-center text-xs text-white font-medium">
+                  A
                 </div>
-                <span className="inline-flex items-center space-x-2 text-gray-500">
-                  <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
-                  <span>Live collaboration enabled</span>
-                </span>
+                <div className="w-8 h-8 rounded-full bg-green-500 border-2 border-white flex items-center justify-center text-xs text-white font-medium">
+                  B
+                </div>
               </div>
             </div>
           </div>
         </div>
       </div>
 
+      {/* Create/Join Modal */}
       {(showCreateModal || showJoinModal) && (
         <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50 px-4">
           <div className="bg-white rounded-xl shadow-2xl max-w-md w-full p-6 relative border border-gray-200">
             <button
               onClick={closeModals}
-              className="absolute top-3 right-3 text-gray-500 hover:text-gray-700"
+              className="absolute top-3 right-3 text-gray-400 hover:text-gray-600 transition-colors"
               aria-label="Close"
             >
-              ✕
+              <svg
+                className="w-5 h-5"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M6 18L18 6M6 6l12 12"
+                />
+              </svg>
             </button>
-            <h3 className="text-2xl font-bold text-gray-900 mb-2">
+            <h3 className="font-heading text-xl font-bold text-gray-900 mb-2">
               {showCreateModal ? "Create a room" : "Join a room"}
             </h3>
-            <p className="text-sm text-gray-600 mb-4">
-              Enter a room slug (e.g., <code className="bg-gray-100 px-1 rounded">team-board</code>)
+            <p className="text-sm text-gray-500 mb-4">
+              Enter a room slug (e.g.,{" "}
+              <code className="bg-gray-100 px-1.5 py-0.5 rounded text-gray-700">
+                team-board
+              </code>
+              )
             </p>
             <input
               type="text"
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full border border-gray-200 rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all"
               placeholder="room-slug"
               value={showCreateModal ? createSlug : joinSlug}
               onChange={(e) =>
-                showCreateModal ? setCreateSlug(e.target.value) : setJoinSlug(e.target.value)
+                showCreateModal
+                  ? setCreateSlug(e.target.value)
+                  : setJoinSlug(e.target.value)
               }
               onKeyDown={(e) => {
                 if (e.key === "Enter") {
@@ -339,25 +482,30 @@ export default function Hero() {
               }}
             />
             {error && <p className="text-sm text-red-600 mt-2">{error}</p>}
-            <div className="mt-6 flex justify-end space-x-3">
+            <div className="mt-6 flex justify-end gap-3">
               <button
                 onClick={closeModals}
-                className="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50"
+                className="px-4 py-2 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors"
               >
                 Cancel
               </button>
               <button
                 onClick={showCreateModal ? handleCreate : handleJoin}
                 disabled={isSubmitting}
-                className="px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-60"
+                className="px-4 py-2 rounded-lg bg-gray-900 text-white hover:bg-gray-800 disabled:opacity-60 transition-colors"
               >
-                {isSubmitting ? "Submitting..." : showCreateModal ? "Create" : "Join"}
+                {isSubmitting
+                  ? "Submitting..."
+                  : showCreateModal
+                    ? "Create"
+                    : "Join"}
               </button>
             </div>
           </div>
         </div>
       )}
 
+      {/* Toast */}
       {toastMessage && (
         <div className="fixed bottom-6 right-6 z-50">
           <div className="bg-red-500 text-white px-4 py-3 rounded-lg shadow-lg">

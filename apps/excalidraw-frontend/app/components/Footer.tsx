@@ -1,153 +1,113 @@
-import { Github, Twitter, Heart } from "lucide-react";
+import { Github, Twitter } from "lucide-react";
+import Link from "next/link";
 
 export default function Footer() {
   return (
-    <footer className="bg-gray-900 text-gray-300 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-7xl mx-auto">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-8">
-          <div className="col-span-1">
-            <div className="flex items-center space-x-2 mb-4">
+    <footer className="py-12 px-4 sm:px-6 lg:px-8 border-t border-gray-100">
+      <div className="max-w-5xl mx-auto">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-8">
+          {/* Logo & tagline */}
+          <div className="flex flex-col gap-3">
+            <Link href="/" className="flex items-center gap-2">
               <svg
-                width="32"
-                height="32"
+                width="24"
+                height="24"
                 viewBox="0 0 32 32"
                 fill="none"
-                className="text-blue-500"
+                className="text-gray-900"
               >
                 <path
-                  d="M5 8 L8 5 L15 12 L28 3 L30 5 L15 20 Z"
+                  d="M6 8 L10 4 L18 12 L28 4 L28 8 L18 16 L28 24 L28 28 L18 20 L10 28 L6 24 L14 16 Z"
                   stroke="currentColor"
                   strokeWidth="2"
                   strokeLinecap="round"
                   strokeLinejoin="round"
                   fill="none"
                 />
-                <rect
-                  x="3"
-                  y="10"
-                  width="20"
-                  height="18"
-                  rx="2"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  fill="none"
-                />
               </svg>
-              <span className="text-xl font-bold text-white">Excalidraw</span>
-            </div>
-            <p className="text-sm text-gray-400 leading-relaxed">
-              Virtual whiteboard for sketching hand-drawn like diagrams. Free
-              and open source.
+              <span className="font-heading font-semibold text-gray-900">
+                Excalidraw
+              </span>
+            </Link>
+            <p className="text-sm text-gray-500 max-w-xs">
+              Open-source whiteboard for sketching hand-drawn diagrams.
             </p>
           </div>
 
-          <div>
-            <h3 className="text-white font-semibold mb-4">Product</h3>
-            <ul className="space-y-2 text-sm">
-              <li>
-                <a href="#features" className="hover:text-white transition">
-                  Features
-                </a>
-              </li>
-              <li>
-                <a href="#pricing" className="hover:text-white transition">
-                  Pricing
-                </a>
-              </li>
-              <li>
-                <a href="#integrations" className="hover:text-white transition">
-                  Integrations
-                </a>
-              </li>
-              <li>
-                <a href="#changelog" className="hover:text-white transition">
-                  Changelog
-                </a>
-              </li>
-            </ul>
-          </div>
-
-          <div>
-            <h3 className="text-white font-semibold mb-4">Resources</h3>
-            <ul className="space-y-2 text-sm">
-              <li>
-                <a href="#docs" className="hover:text-white transition">
-                  Documentation
-                </a>
-              </li>
-              <li>
-                <a href="#community" className="hover:text-white transition">
-                  Community
-                </a>
-              </li>
-              <li>
-                <a href="#blog" className="hover:text-white transition">
-                  Blog
-                </a>
-              </li>
-              <li>
-                <a href="#support" className="hover:text-white transition">
-                  Support
-                </a>
-              </li>
-            </ul>
-          </div>
-
-          <div>
-            <h3 className="text-white font-semibold mb-4">Company</h3>
-            <ul className="space-y-2 text-sm">
-              <li>
-                <a href="#about" className="hover:text-white transition">
-                  About
-                </a>
-              </li>
-              <li>
-                <a href="#privacy" className="hover:text-white transition">
-                  Privacy
-                </a>
-              </li>
-              <li>
-                <a href="#terms" className="hover:text-white transition">
-                  Terms
-                </a>
-              </li>
-              <li>
-                <a href="#contact" className="hover:text-white transition">
-                  Contact
-                </a>
-              </li>
-            </ul>
+          {/* Links */}
+          <div className="flex flex-wrap gap-8 text-sm">
+            <div className="flex flex-col gap-2">
+              <span className="font-medium text-gray-900">Product</span>
+              <a
+                href="#features"
+                className="text-gray-500 hover:text-gray-900 transition-colors"
+              >
+                Features
+              </a>
+              <a
+                href="#"
+                className="text-gray-500 hover:text-gray-900 transition-colors"
+              >
+                Changelog
+              </a>
+            </div>
+            <div className="flex flex-col gap-2">
+              <span className="font-medium text-gray-900">Resources</span>
+              <a
+                href="#"
+                className="text-gray-500 hover:text-gray-900 transition-colors"
+              >
+                Docs
+              </a>
+              <a
+                href="#"
+                className="text-gray-500 hover:text-gray-900 transition-colors"
+              >
+                Blog
+              </a>
+            </div>
+            <div className="flex flex-col gap-2">
+              <span className="font-medium text-gray-900">Legal</span>
+              <a
+                href="#"
+                className="text-gray-500 hover:text-gray-900 transition-colors"
+              >
+                Privacy
+              </a>
+              <a
+                href="#"
+                className="text-gray-500 hover:text-gray-900 transition-colors"
+              >
+                Terms
+              </a>
+            </div>
           </div>
         </div>
 
-        <div className="pt-8 border-t border-gray-800">
-          <div className="flex flex-col sm:flex-row justify-between items-center space-y-4 sm:space-y-0">
-            <div className="flex items-center space-x-1 text-sm">
-              <span>Made with</span>
-              <Heart className="w-4 h-4 text-red-500 fill-current" />
-              <span>by the Excalidraw team</span>
-            </div>
-
-            <div className="flex items-center space-x-6">
-              <a
-                href="#github"
-                className="hover:text-white transition"
-                aria-label="GitHub"
-              >
-                <Github className="w-5 h-5" />
-              </a>
-              <a
-                href="#twitter"
-                className="hover:text-white transition"
-                aria-label="Twitter"
-              >
-                <Twitter className="w-5 h-5" />
-              </a>
-            </div>
-          </div>
-
-          <div className="mt-4 text-center text-sm text-gray-500">
-            © 2024 Excalidraw. All rights reserved.
+        {/* Bottom bar */}
+        <div className="mt-12 pt-8 border-t border-gray-100 flex flex-col sm:flex-row justify-between items-center gap-4">
+          <p className="text-sm text-gray-400">
+            © {new Date().getFullYear()} Excalidraw. Open source under MIT.
+          </p>
+          <div className="flex items-center gap-4">
+            <a
+              href="https://github.com"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-gray-400 hover:text-gray-600 transition-colors"
+              aria-label="GitHub"
+            >
+              <Github className="w-5 h-5" />
+            </a>
+            <a
+              href="https://twitter.com"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-gray-400 hover:text-gray-600 transition-colors"
+              aria-label="Twitter"
+            >
+              <Twitter className="w-5 h-5" />
+            </a>
           </div>
         </div>
       </div>
