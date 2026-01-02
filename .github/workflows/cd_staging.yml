@@ -85,7 +85,37 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9.0.0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "pnpm"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build frontend
+        run: pnpm turbo run build --filter=excalidraw-frontend
+        env:
+          NEXT_PUBLIC_HTTP_URL: ${{ secrets.STAGING_NEXT_PUBLIC_HTTP_URL }}
+          NEXT_PUBLIC_WS_BASE_URL: ${{ secrets.STAGING_NEXT_PUBLIC_WS_BASE_URL }}
+
       - name: Deploy to staging server
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.STAGING_SERVER_HOST }}
+          username: ${{ secrets.STAGING_SERVER_USER }}
+          key: ${{ secrets.STAGING_SSH_KEY }}
+          source: "apps/excalidraw-frontend/.next/,apps/excalidraw-frontend/public/,apps/excalidraw-frontend/package.json"
+          target: "~/canvas-app/"
+          overwrite: true
+
+      - name: Restart frontend service
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.STAGING_SERVER_HOST }}
@@ -93,13 +123,8 @@ jobs:
           key: ${{ secrets.STAGING_SSH_KEY }}
           script: |
             export PATH="/root/.nvm/versions/node/v24.12.0/bin:$PATH"
-
             cd ~/canvas-app
-            git pull origin main
-            export NEXT_PUBLIC_HTTP_URL="${{ secrets.STAGING_NEXT_PUBLIC_HTTP_URL }}"
-            export NEXT_PUBLIC_WS_BASE_URL="${{ secrets.STAGING_NEXT_PUBLIC_WS_BASE_URL }}"
             pnpm install --frozen-lockfile
-            pnpm turbo run build --filter=excalidraw-frontend
             pm2 restart frontend
 
   build-and-deploy-http:
@@ -114,7 +139,37 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Deploy and build on server
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9.0.0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "pnpm"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Generate Prisma Client
+        run: pnpm --filter @repo/db db:generate
+
+      - name: Build http
+        run: pnpm turbo run build --filter=http
+
+      - name: Deploy to staging server
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.STAGING_SERVER_HOST }}
+          username: ${{ secrets.STAGING_SERVER_USER }}
+          key: ${{ secrets.STAGING_SSH_KEY }}
+          source: "apps/http/dist/,apps/http/package.json,packages/"
+          target: "~/canvas-app/"
+          overwrite: true
+
+      - name: Restart http service
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.STAGING_SERVER_HOST }}
@@ -122,12 +177,9 @@ jobs:
           key: ${{ secrets.STAGING_SSH_KEY }}
           script: |
             export PATH="/root/.nvm/versions/node/v24.12.0/bin:$PATH"
-
             cd ~/canvas-app
-            git pull origin main
             pnpm install --frozen-lockfile
             pnpm --filter @repo/db db:generate
-            pnpm turbo run build --filter=http
             pm2 restart http-server
 
   build-and-deploy-ws:
@@ -142,7 +194,37 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Deploy and build on server
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9.0.0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "pnpm"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Generate Prisma Client
+        run: pnpm --filter @repo/db db:generate
+
+      - name: Build ws
+        run: pnpm turbo run build --filter=ws
+
+      - name: Deploy to staging server
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.STAGING_SERVER_HOST }}
+          username: ${{ secrets.STAGING_SERVER_USER }}
+          key: ${{ secrets.STAGING_SSH_KEY }}
+          source: "apps/ws/dist/,apps/ws/package.json,packages/"
+          target: "~/canvas-app/"
+          overwrite: true
+
+      - name: Restart ws service
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.STAGING_SERVER_HOST }}
@@ -150,10 +232,7 @@ jobs:
           key: ${{ secrets.STAGING_SSH_KEY }}
           script: |
             export PATH="/root/.nvm/versions/node/v24.12.0/bin:$PATH"
-
             cd ~/canvas-app
-            git pull origin main
             pnpm install --frozen-lockfile
             pnpm --filter @repo/db db:generate
-            pnpm turbo run build --filter=ws
             pm2 restart ws-server
