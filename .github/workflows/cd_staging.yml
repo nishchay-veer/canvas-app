@@ -1,0 +1,153 @@
+name: CD Staging
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+env:
+  NODE_ENV: production
+
+jobs:
+  detect-changes:
+    name: Detect Changes
+    runs-on: ubuntu-latest
+    outputs:
+      excalidraw-frontend: ${{ steps.filter.outputs.excalidraw-frontend }}
+      http: ${{ steps.filter.outputs.http }}
+      ws: ${{ steps.filter.outputs.ws }}
+      db: ${{ steps.filter.outputs.db }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Detect file changes
+        uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            excalidraw-frontend:
+              - 'apps/excalidraw-frontend/**'
+              - 'packages/ui/**'
+            http:
+              - 'apps/http/**'
+              - 'packages/db/**'
+              - 'packages/backend-common/**'
+              - 'packages/common/**'
+            ws:
+              - 'apps/ws/**'
+              - 'packages/db/**'
+              - 'packages/backend-common/**'
+            db:
+              - 'packages/db/**'
+
+  run-db-migrations:
+    name: Run Database Migrations
+    needs: detect-changes
+    if: needs.detect-changes.outputs.db == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9.0.0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "pnpm"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Generate Prisma Client
+        run: pnpm --filter @repo/db db:generate
+
+      - name: Run migrations
+        run: pnpm --filter @repo/db prisma migrate deploy
+        env:
+          DATABASE_URL: ${{ secrets.STAGING_DATABASE_URL }}
+
+  build-and-deploy-frontend:
+    name: Build & Deploy Frontend
+    needs: [detect-changes, run-db-migrations]
+    if: |
+      always() &&
+      needs.detect-changes.outputs.excalidraw-frontend == 'true' &&
+      (needs.run-db-migrations.result == 'success' || needs.run-db-migrations.result == 'skipped')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Deploy to staging server
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.STAGING_SERVER_HOST }}
+          username: ${{ secrets.STAGING_SERVER_USER }}
+          key: ${{ secrets.STAGING_SSH_KEY }}
+          script: |
+            cd ~/canvas-app
+            git pull origin main
+            export NEXT_PUBLIC_HTTP_URL="${{ secrets.STAGING_NEXT_PUBLIC_HTTP_URL }}"
+            export NEXT_PUBLIC_WS_BASE_URL="${{ secrets.STAGING_NEXT_PUBLIC_WS_BASE_URL }}"
+            pnpm install --frozen-lockfile
+            pnpm turbo run build --filter=excalidraw-frontend
+            pm2 restart frontend
+
+  build-and-deploy-http:
+    name: Build & Deploy HTTP Server
+    needs: [detect-changes, run-db-migrations]
+    if: |
+      always() &&
+      needs.detect-changes.outputs.http == 'true' &&
+      (needs.run-db-migrations.result == 'success' || needs.run-db-migrations.result == 'skipped')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Deploy and build on server
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.STAGING_SERVER_HOST }}
+          username: ${{ secrets.STAGING_SERVER_USER }}
+          key: ${{ secrets.STAGING_SSH_KEY }}
+          script: |
+            cd ~/canvas-app
+            git pull origin main
+            pnpm install --frozen-lockfile
+            pnpm --filter @repo/db db:generate
+            pnpm turbo run build --filter=http
+            pm2 restart http-server
+
+  build-and-deploy-ws:
+    name: Build & Deploy WebSocket Server
+    needs: [detect-changes, run-db-migrations]
+    if: |
+      always() &&
+      needs.detect-changes.outputs.ws == 'true' &&
+      (needs.run-db-migrations.result == 'success' || needs.run-db-migrations.result == 'skipped')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Deploy and build on server
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.STAGING_SERVER_HOST }}
+          username: ${{ secrets.STAGING_SERVER_USER }}
+          key: ${{ secrets.STAGING_SSH_KEY }}
+          script: |
+            cd ~/canvas-app
+            git pull origin main
+            pnpm install --frozen-lockfile
+            pnpm --filter @repo/db db:generate
+            pnpm turbo run build --filter=ws
+            pm2 restart ws-server
