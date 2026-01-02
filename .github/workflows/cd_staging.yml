@@ -63,7 +63,7 @@ jobs:
           cache: "pnpm"
 
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+        run: pnpm install
 
       - name: Generate Prisma Client
         run: pnpm --filter @repo/db db:generate
@@ -97,10 +97,10 @@ jobs:
           cache: "pnpm"
 
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+        run: pnpm install
 
       - name: Build frontend
-        run: pnpm turbo run build --filter=excalidraw-frontend
+        run: pnpm exec turbo run build --filter=excalidraw-frontend
         env:
           NEXT_PUBLIC_HTTP_URL: ${{ secrets.STAGING_NEXT_PUBLIC_HTTP_URL }}
           NEXT_PUBLIC_WS_BASE_URL: ${{ secrets.STAGING_NEXT_PUBLIC_WS_BASE_URL }}
@@ -124,7 +124,7 @@ jobs:
           script: |
             export PATH="/root/.nvm/versions/node/v24.12.0/bin:$PATH"
             cd ~/canvas-app
-            pnpm install --frozen-lockfile
+            pnpm install
             pm2 restart frontend
 
   build-and-deploy-http:
@@ -151,13 +151,13 @@ jobs:
           cache: "pnpm"
 
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+        run: pnpm install
 
       - name: Generate Prisma Client
         run: pnpm --filter @repo/db db:generate
 
       - name: Build http
-        run: pnpm turbo run build --filter=http
+        run: pnpm exec turbo run build --filter=http
 
       - name: Deploy to staging server
         uses: appleboy/scp-action@v0.1.7
@@ -178,7 +178,7 @@ jobs:
           script: |
             export PATH="/root/.nvm/versions/node/v24.12.0/bin:$PATH"
             cd ~/canvas-app
-            pnpm install --frozen-lockfile
+            pnpm install
             pnpm --filter @repo/db db:generate
             pm2 restart http-server
 
@@ -206,13 +206,13 @@ jobs:
           cache: "pnpm"
 
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+        run: pnpm install
 
       - name: Generate Prisma Client
         run: pnpm --filter @repo/db db:generate
 
       - name: Build ws
-        run: pnpm turbo run build --filter=ws
+        run: pnpm exec turbo run build --filter=ws
 
       - name: Deploy to staging server
         uses: appleboy/scp-action@v0.1.7
@@ -233,6 +233,6 @@ jobs:
           script: |
             export PATH="/root/.nvm/versions/node/v24.12.0/bin:$PATH"
             cd ~/canvas-app
-            pnpm install --frozen-lockfile
+            pnpm install
             pnpm --filter @repo/db db:generate
             pm2 restart ws-server
