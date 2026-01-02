@@ -113,7 +113,7 @@ export default function Hero() {
           {/* Badge */}
           <div className="inline-flex items-center gap-2 px-3 py-1 mb-8 text-sm font-medium text-gray-600 bg-white/80 backdrop-blur-sm border border-gray-200 rounded-full">
             <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-            <span>Completely Open source & free forever.</span>
+            <span>completely Open source & free forever.</span>
           </div>
 
           {/* Headline */}

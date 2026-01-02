@@ -6,9 +6,6 @@ on:
       - main
   workflow_dispatch:
 
-env:
-  NODE_ENV: production
-
 jobs:
   detect-changes:
     name: Detect Changes
@@ -97,11 +94,14 @@ jobs:
           cache: "pnpm"
 
       - name: Install dependencies
-        run: pnpm install
+        run: pnpm install --dev
+        env:
+          NODE_ENV: development
 
       - name: Build frontend
         run: npx turbo run build --filter=excalidraw-frontend
         env:
+          NODE_ENV: production
           NEXT_PUBLIC_HTTP_URL: ${{ secrets.STAGING_NEXT_PUBLIC_HTTP_URL }}
           NEXT_PUBLIC_WS_BASE_URL: ${{ secrets.STAGING_NEXT_PUBLIC_WS_BASE_URL }}
 
@@ -151,7 +151,9 @@ jobs:
           cache: "pnpm"
 
       - name: Install dependencies
-        run: pnpm install
+        run: pnpm install --dev
+        env:
+          NODE_ENV: development
 
       - name: Generate Prisma Client
         run: pnpm --filter @repo/db db:generate
@@ -206,7 +208,9 @@ jobs:
           cache: "pnpm"
 
       - name: Install dependencies
-        run: pnpm install
+        run: pnpm install --dev
+        env:
+          NODE_ENV: development
 
       - name: Generate Prisma Client
         run: pnpm --filter @repo/db db:generate
