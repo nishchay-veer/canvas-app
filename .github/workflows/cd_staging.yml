@@ -100,7 +100,7 @@ jobs:
         run: pnpm install
 
       - name: Build frontend
-        run: pnpm exec turbo run build --filter=excalidraw-frontend
+        run: npx turbo run build --filter=excalidraw-frontend
         env:
           NEXT_PUBLIC_HTTP_URL: ${{ secrets.STAGING_NEXT_PUBLIC_HTTP_URL }}
           NEXT_PUBLIC_WS_BASE_URL: ${{ secrets.STAGING_NEXT_PUBLIC_WS_BASE_URL }}
@@ -157,7 +157,7 @@ jobs:
         run: pnpm --filter @repo/db db:generate
 
       - name: Build http
-        run: pnpm exec turbo run build --filter=http
+        run: npx turbo run build --filter=http
 
       - name: Deploy to staging server
         uses: appleboy/scp-action@v0.1.7
@@ -212,7 +212,7 @@ jobs:
         run: pnpm --filter @repo/db db:generate
 
       - name: Build ws
-        run: pnpm exec turbo run build --filter=ws
+        run: npx turbo run build --filter=ws
 
       - name: Deploy to staging server
         uses: appleboy/scp-action@v0.1.7
